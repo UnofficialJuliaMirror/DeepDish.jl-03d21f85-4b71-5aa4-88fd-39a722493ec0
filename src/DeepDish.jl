@@ -31,8 +31,10 @@ function recursive_load(g)
             return load_pytable(g)
         end
         return merge(ret_dict, Dict{String, Any}(split(name(n),"/")[end]=>recursive_load(n) for n in g))
+    elseif read(attrs(g)["CLASS"])=="CARRAY"
+        return read(g)
     else
-        return g
+        return nothing
     end
 end
 
