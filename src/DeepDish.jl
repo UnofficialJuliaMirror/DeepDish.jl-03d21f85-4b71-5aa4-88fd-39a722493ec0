@@ -1,6 +1,6 @@
 module DeepDish
 
-import HDF5
+using HDF5: h5open, HDF5Group, HDF5File, read, attrs, name, names
 import DataFrames
 
 export load_deepdish
