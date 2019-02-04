@@ -12,15 +12,33 @@ function load_deepdish(f)
     return data
 end
 
+const useless_attrs = (
+    "CLASS",               
+    "DEEPDISH_IO_VERSION",   
+    "PYTABLES_FORMAT_VERSION",
+    "TITLE",                 
+    "VERSION",        
+    )
+
 function recursive_load(g)
     ret_dict = Dict{String,Any}()
     if g isa HDF5Group || g isa HDF5File
         title = read(attrs(g)["TITLE"])
+        
+        # if there are scalar values saved as attribues, read them
+        other_attrs = filter(x -> !(x in useless_attrs), names(attrs(g)))
+        for oa in other_attrs
+            ret_dict[oa] = read(attrs(g)[oa])
+        end
+
+        # if the elements were a python list
         if isa(title, String) && startswith(title, "list:")
             n_items = parse(Int, split(title, ":")[2])
             return ["i$i" in names(attrs(g)) ?
                     read(attrs(g)["i$i"]) : recursive_load(g["i$i"])
                  for i in 0:n_items-1]
+
+        # if the elements were a python dict
         elseif isa(title, String) && startswith(title, "dict:")
             merge!(ret_dict,
                    Dict{String, Any}(k=>read(attrs(g)[k])
@@ -31,7 +49,8 @@ function recursive_load(g)
             return load_pytable(g)
         end
         return merge(ret_dict, Dict{String, Any}(split(name(n),"/")[end]=>recursive_load(n) for n in g))
-    elseif read(attrs(g)["CLASS"])=="CARRAY"
+
+    elseif read(attrs(g)["CLASS"])=="CARRAY" || read(attrs(g)["CLASS"])=="ARRAY"
         return read(g)
     else
         return nothing
