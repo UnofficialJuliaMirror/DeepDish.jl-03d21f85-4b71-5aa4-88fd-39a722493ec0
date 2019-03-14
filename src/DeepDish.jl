@@ -13,18 +13,23 @@ function load_deepdish(f)
 end
 
 const useless_attrs = (
-    "CLASS",               
-    "DEEPDISH_IO_VERSION",   
+    "CLASS",
+    "DEEPDISH_IO_VERSION",
     "PYTABLES_FORMAT_VERSION",
-    "TITLE",                 
-    "VERSION",        
+    "TITLE",
+    "VERSION",
     )
 
 function recursive_load(g)
     ret_dict = Dict{String,Any}()
     if g isa HDF5Group || g isa HDF5File
-        title = read(attrs(g)["TITLE"])
-        
+        # check title
+        if "TITLE" ∈ names(attrs(g))
+            title = read(attrs(g)["TITLE"])
+        else
+            title = nothing
+        end
+
         # if there are scalar values saved as attribues, read them
         other_attrs = filter(x -> !(x in useless_attrs), names(attrs(g)))
         for oa in other_attrs
@@ -66,7 +71,11 @@ function load_pytable(obj)
         block_cols = read(obj["block$(i_block-1)_items"])
         block_vals = read(obj["block$(i_block-1)_values"])
         for (i_col, colname) in enumerate(block_cols)
-            setproperty!(df, Symbol(colname), block_vals[i_col, :])
+            if size(df, 1) == 0 || size(df,1) == size(block_vals, 2)
+                setproperty!(df, Symbol(colname), block_vals[i_col, :])
+            elseif size(df, 1) > 0
+                @warn "Loading a file with pickeled objects"
+            end
         end
     end
     return df
